@@ -1,4 +1,5 @@
 rootProject.name = 'terraformjavaspike'
 
-include 'tasks:helloWorld',
+include 'tasks:counter',
+        'lambdas:display',
         'infrastructure'
