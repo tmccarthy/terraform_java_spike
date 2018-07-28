@@ -1,5 +1,13 @@
 variable "display_zip_path" {}
 
+variable "bucket_name" {
+  default = "bucket1.tmm.id.au"
+}
+
+variable "object_name" {
+  default = "object"
+}
+
 provider "aws" {
   region = "ap-southeast-2"
 }
@@ -7,7 +15,32 @@ provider "aws" {
 data "aws_region" "current" {}
 
 resource "aws_s3_bucket" "bucket_1" {
-  bucket = "bucket1.tmm.id.au"
+  bucket = "${var.bucket_name}"
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::${var.bucket_name}/${var.object_name}",
+      "Principal": {
+        "AWS": [
+          "${aws_iam_role.iam_for_lambda.arn}"
+        ]
+      }
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_s3_bucket_object" "object" {
+  bucket  = "${aws_s3_bucket.bucket_1.id}"
+  key     = "${var.object_name}"
+  content = "0"
 }
 
 resource "aws_iam_role" "iam_for_lambda" {
@@ -37,10 +70,12 @@ resource "aws_lambda_function" "display" {
   handler          = "au.id.tmm.terraformjavaspike.lambda.display.Lambda"
   source_code_hash = "${base64sha256(file(var.display_zip_path))}"
   runtime          = "java8"
+  timeout          = 30
+  memory_size      = 256
 
   environment {
     variables = {
-      bucket_name = "${aws_s3_bucket.bucket_1.id}"
+      BUCKET_NAME = "${aws_s3_bucket.bucket_1.id}"
     }
   }
 }
@@ -48,12 +83,6 @@ resource "aws_lambda_function" "display" {
 resource "aws_api_gateway_rest_api" "api" {
   name = "terraform_java_spike"
 }
-
-//resource "aws_api_gateway_stage" "stage" {
-//  stage_name = "prod"
-//  rest_api_id = "${aws_api_gateway_rest_api.api.id}"
-//  deployment_id = "${aws_api_gateway_deployment.deployment.id}"
-//}
 
 resource "aws_api_gateway_deployment" "deployment" {
   depends_on = ["aws_api_gateway_integration.integration"]
