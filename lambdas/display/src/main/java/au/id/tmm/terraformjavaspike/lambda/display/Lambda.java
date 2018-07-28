@@ -7,14 +7,7 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
-import org.apache.commons.io.IOUtils;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.charset.Charset;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -36,11 +29,13 @@ public class Lambda implements RequestHandler<Request, Response> {
             logger.log("BUCKET_NAME=" + bucketName);
             logger.log("OBJECT_KEY=" + OBJECT_KEY);
 
-            Optional<Integer> existingCount = existingCount(s3Client, bucketName);
+            int currentCount = Integer.parseInt(s3Client.getObjectAsString(bucketName, OBJECT_KEY));
 
-            logger.log("existingCount=" + existingCount);
+            int nextCount = currentCount + 1;
 
-            return new Response(existingCount.map(i -> Integer.toString(i)).orElse("null"));
+            s3Client.putObject(bucketName, OBJECT_KEY, Integer.toString(nextCount));
+
+            return new Response(Integer.toString(currentCount));
         } catch (Throwable t) {
             String message = Stream.of(t.getStackTrace())
                     .map(StackTraceElement::toString)
@@ -53,16 +48,6 @@ public class Lambda implements RequestHandler<Request, Response> {
             } else {
                 throw new RuntimeException(t);
             }
-        }
-    }
-
-    private static Optional<Integer> existingCount(AmazonS3 s3, String bucketName) throws IOException {
-        try (S3Object object = s3.getObject(bucketName, OBJECT_KEY);
-             S3ObjectInputStream inputStream = object.getObjectContent()) {
-
-            String objectContent = IOUtils.toString(inputStream, Charset.forName("UTF-8"));
-
-            return Optional.of(Integer.parseInt(objectContent));
         }
     }
 

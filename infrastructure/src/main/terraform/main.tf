@@ -22,7 +22,8 @@ resource "aws_s3_bucket" "bucket_1" {
   "Statement": [
     {
       "Action": [
-        "s3:GetObject"
+        "s3:GetObject",
+        "s3:PutObject"
       ],
       "Effect": "Allow",
       "Resource": "arn:aws:s3:::${var.bucket_name}/${var.object_name}",
@@ -90,7 +91,7 @@ resource "aws_api_gateway_deployment" "deployment" {
   stage_name = "prod"
 }
 
-resource "aws_api_gateway_method_settings" "s" {
+resource "aws_api_gateway_method_settings" "aws_api_gateway_method_settings" {
   rest_api_id = "${aws_api_gateway_rest_api.api.id}"
   stage_name  = "${aws_api_gateway_deployment.deployment.stage_name}"
   method_path = "${aws_api_gateway_resource.resource.path_part}/${aws_api_gateway_method.method.http_method}"
